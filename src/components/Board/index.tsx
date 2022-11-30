@@ -8,9 +8,10 @@ import useTicTacToe from 'hooks/tictactoe';
 
 function Board() {
   const [gridSize, setGridSize] = useState(3);
-  const {winningCombo, noticeBoard, board, onPlay, players} = useTicTacToe({
-    gridSize,
-  });
+  const {winningCombo, noticeBoard, board, onPlay, players, resetGame} =
+    useTicTacToe({
+      gridSize,
+    });
   const boxesRef = useRef<HTMLDivElement[] | null[]>([]);
   const handleGridLayoutChange = ({target}: ChangeEvent<HTMLSelectElement>) => {
     const {value} = target;
@@ -21,7 +22,7 @@ function Board() {
     <div className="d-flex flex-column min-height-100">
       <div className="d-flex flex-column justify-content-center align-items-center">
         <select
-          className="form-select mb-4 w-50 form-select-lg cursor-pointer"
+          className="form-select form-select-lg mb-4"
           aria-label="Select grid size"
           onChange={handleGridLayoutChange}
         >
@@ -33,16 +34,23 @@ function Board() {
         <p className="display-4 text-white mb-0">
           {players[0]?.score || 0} - {players[1]?.score || 0}
         </p>
+        <button
+          type="button"
+          className="btn btn-light btn-sm w-25 my-2"
+          onClick={() => resetGame()}
+        >
+          Reset Game
+        </button>
         <br />
       </div>
       {noticeBoard ? (
         <div
           className={`alert alert-${
             noticeBoard.type || 'info'
-          } text-center h5 w-md-50 mx-auto`}
+          } text-center lead w-50 mx-auto`}
           role="alert"
         >
-          {noticeBoard.title}
+          <strong>{noticeBoard.title}</strong>
         </div>
       ) : null}
       <div

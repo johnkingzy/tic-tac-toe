@@ -10,15 +10,33 @@ type UseTicTacToeType = {
   noticeBoard: Notice;
   board: string[];
   onPlay: (boardIndex: number) => void;
+  resetGame: () => void;
   players: Player[];
   winningCombo: number[];
 };
+
+const defaultPlayers = [
+  {
+    id: 0,
+    name: 'Player 1',
+    icon: 'X',
+    score: 0,
+  },
+  {
+    id: 1,
+    name: 'Player 2',
+    icon: 'O',
+    score: 0,
+  },
+];
 
 export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
   const [board, updateBoard] = useState<string[]>([]);
   const [winningCombo, setWinningCombo] = useState<number[]>([]);
   const [noticeBoard, updateNoticeBoard] = useState<Notice>({title: ''});
+  const [loading, setLoading] = useState(false);
 
+  const initialGridSize = useRef<number>(gridSize);
   const turns = useRef<number>(0);
   const players = useRef<Player[]>([]);
 
@@ -26,6 +44,37 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
     () => generateWinningCombination(gridSize),
     [gridSize],
   );
+
+  useEffect(() => {
+    // sync local storage data.
+    let data = {
+      turns: 0,
+      board: generateBoard(initialGridSize.current),
+      players: defaultPlayers,
+    };
+    try {
+      const value = localStorage.getItem('gameData') || '';
+      if (value && value.length > 0) data = JSON.parse(value);
+    } catch (error) {
+      console.error(error);
+    }
+    players.current = data.players;
+    turns.current = data.turns;
+    if (data.board && data.board.length) {
+      updateBoard(data.board);
+    }
+    updateNoticeBoard({
+      type: NoticeTypeEnum.info,
+      title: `Player ${turns.current + 1} turn`,
+    });
+  }, [initialGridSize]);
+
+  useEffect(() => {
+    if (gridSize !== initialGridSize.current) {
+      updateBoard(generateBoard(gridSize));
+      initialGridSize.current = gridSize;
+    }
+  }, [gridSize]);
 
   const resetBoard = useCallback(() => {
     const newBoard = generateBoard(gridSize);
@@ -44,17 +93,12 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
     );
   }, [gridSize]);
 
-  const checkForTie = useCallback(() => {
-    const isEmptyBoard = board.filter((item) => item === '').length === 0;
-    if (isEmptyBoard) {
-      updateNoticeBoard({
-        type: NoticeTypeEnum.warning,
-        title: `Player ${turns.current + 1} turn`,
-      });
-      return true;
-    }
-    return false;
-  }, [board]);
+  const resetGame = useCallback(() => {
+    resetBoard();
+    players.current = defaultPlayers;
+    turns.current = 0;
+    localStorage.clear();
+  }, [resetBoard]);
 
   const checkForWin = useCallback(
     (currentPlayer: Player) => {
@@ -86,42 +130,23 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
     [board, combinations],
   );
 
-  useEffect(() => {
-    // sync local storage data.
-    const data = JSON.parse(localStorage.getItem('gameData') || '');
-    players.current = data.players || [
-      {
-        id: 0,
-        name: 'Player 1',
-        icon: 'X',
-        score: 0,
-        boardSelections: [],
-      },
-      {
-        id: 1,
-        name: 'Player 2',
-        icon: 'O',
-        score: 0,
-        boardSelections: [],
-      },
-    ];
-    turns.current = data.turns;
-    if (data.board && !data.board.length) {
-      updateBoard(data.board);
+  const checkForTie = useCallback(() => {
+    const isEmptyBoard = board.filter((item) => item === '').length === 0;
+    if (isEmptyBoard) {
+      turns.current = turns.current === 0 ? turns.current + 1 : 0;
+      updateNoticeBoard({
+        type: NoticeTypeEnum.warning,
+        title: "It's a tie!",
+      });
+      return true;
     }
-    updateNoticeBoard({
-      type: NoticeTypeEnum.info,
-      title: `Player ${turns.current + 1} turn`,
-    });
-  }, []);
-
-  useEffect(() => {
-    updateBoard(generateBoard(gridSize));
-  }, [gridSize]);
+    return false;
+  }, [board]);
 
   useEffect(() => {
     // if the board is not empty
     if (board.findIndex((item) => item !== '') > -1) {
+      setLoading(true);
       const currentPlayer = players.current[turns.current];
       if (!checkForWin(currentPlayer) && !checkForTie()) {
         localStorage.setItem(
@@ -133,6 +158,7 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
           }),
         );
         turns.current = turns.current === 0 ? turns.current + 1 : 0;
+        setLoading(false);
         updateNoticeBoard({
           type: NoticeTypeEnum.info,
           title: `Player ${turns.current + 1} turn`,
@@ -140,6 +166,7 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
       } else {
         setTimeout(() => {
           resetBoard();
+          setLoading(false);
         }, DELAY);
       }
     }
@@ -147,13 +174,13 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
 
   const onPlay = useCallback(
     (boardIndex: number) => {
+      if (board[boardIndex].length || loading) return false;
       const player = players.current[turns.current];
-      if (board[boardIndex].length) return false;
       const cloneBoard = [...board];
       cloneBoard[boardIndex] = player?.icon;
       updateBoard(cloneBoard);
     },
-    [board, players, turns],
+    [board, players, turns, loading],
   );
 
   return {
@@ -162,5 +189,6 @@ export default function useTicTacToe({gridSize = 3}: Props): UseTicTacToeType {
     onPlay,
     players: players.current,
     winningCombo,
+    resetGame,
   };
 }

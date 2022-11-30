@@ -39,6 +39,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   background-image: linear-gradient(to right, #6366f1, #a855f7, #ec4899);
+  zoom: 90%;
 }
 
 a {
@@ -49,7 +50,10 @@ a {
 * {
   box-sizing: border-box;
 }
-
+.form-select {
+  max-width: 110px;
+  cursor: pointer;
+}
 .board {
   background-color: $light-200;
   width: 300px;
@@ -86,7 +90,7 @@ a {
   position: absolute;
 }
 
-.display-3, .display-4 {
+.display-2, .display-4 {
   font-weight: 700;
 }
 
